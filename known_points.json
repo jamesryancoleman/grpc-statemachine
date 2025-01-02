@@ -1,13 +1,13 @@
 {
     "known_points": {
-        "http://virtual-device.local/co2": "6",
-        "http://virtual-device.local/air-temp": "7",
-        "http://virtual-device.local/air-temp-setpoint": "8",
-        "http://virtual-device.local/humid": "9",
-        "http://virtual-device.local/status": "10",
-        "http://virtual-device.local/power": "11",
-        "http://virtual-device.local/start-time": "12",
+        "http://virtual-device/co2": "6",
+        "http://virtual-device/air-temp": "7",
+        "http://virtual-device/air-temp-setpoint": "8",
+        "http://virtual-device/humid": "9",
+        "http://virtual-device/status": "10",
+        "http://virtual-device/power": "11",
+        "http://virtual-device/start-time": "12",
         
-        "http://virtual-device.local/msg": "3"
+        "http://virtual-device/msg": "3"
     }
 }   

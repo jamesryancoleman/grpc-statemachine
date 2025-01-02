@@ -1,6 +1,6 @@
 # create the device
-DEVICE_ID=$(mkd -n 'statemachine')
-# add -driver.name grpc-example $DEVICE_ID
+DEVICE_ID=$(mkd -n example-device -l SouthSt)
+add -driver.name grpc-example -addr localhost:50061 $DEVICE_ID
 echo "created dev:$DEVICE_ID"
 
 # add its points 
@@ -12,12 +12,12 @@ PT5=$(mkd -p -n status -t brick:On_Off_Status $DEVICE_ID)
 PT6=$(mkd -p -n power_draw -t brick:Power_Sensor $DEVICE_ID)
 
 # add xrefs
-add -xref http://virtual-device.local/co2 $PT1
-add -xref http://virtual-device.local/air-temp $PT2
-add -xref http://virtual-device.local/air-temp-setpoint $PT3
-add -xref http://virtual-device.local/humid $PT4
-add -xref http://virtual-device.local/status $PT5
-add -xref http://virtual-device.local/power $PT6
+add -xref http://virtual-device/co2 $PT1
+add -xref http://virtual-device/air-temp $PT2
+add -xref http://virtual-device/air-temp-setpoint $PT3
+add -xref http://virtual-device/humid $PT4
+add -xref http://virtual-device/status $PT5
+add -xref http://virtual-device/power $PT6
 
 echo "created dev:$DEVICE_ID/pts/$PT1"
 echo "created dev:$DEVICE_ID/pts/$PT2"

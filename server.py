@@ -1,30 +1,18 @@
 from concurrent import futures
 import logging
 import json
+import sys
 
 import statemachine as sm
 
-import device_pb2_grpc
-import device_pb2
+import comms_pb2_grpc
+import comms_pb2
 import grpc
 
-SERVE_PORT = "50063"
+SERVE_PORT = "50061"
 
-# the point_map is a collection of URIs that maps to internal point addresses
+# the point_map is a collection of URIs that map to points in the internal namespace
 point_map = {}
-
-# the internal point keys are used to index internal driver devices and points
-registry = {}
-
-class Registry(object):
-    """The Registry class creates a service that responds to get and set RPCs
-       for a collection of devices.
-    """
-    def __init__(self):
-        self.Devices = {}
-
-    def add_device(self, key:str, dev:sm.Device):
-        self.Devices[key] = dev
 
 def LoadPointMap(path:str='known_points.json'):
     global point_map
@@ -36,138 +24,64 @@ def LoadPointMap(path:str='known_points.json'):
     for k, v in point_map.items():
         print('\t',k, "->",v)
 
-class GetSetRunServicer(device_pb2_grpc.GetSetRunServicer):
-    def Get(self, request:device_pb2.GetRequest, context):
-        print("received Get request: key='{}'".format(request.Key))
-        header = device_pb2.Header(Src=request.Header.Dst, Dst=request.Header.Src)
+class GetSetRunServicer(comms_pb2_grpc.GetSetRunServicer):
 
-        # request.Key is the bos point (e.g., "4.2")
-        key:str = request.Key 
-        value:str = None
-
-        if key in point_map:
-            internal_addr = point_map[key]
-            if internal_addr in registry:
-                ref = registry[internal_addr] # tuple[object, key:str]
-
-                # this is where the driver would normally perform protocol specific
-                # actions like calling a lower level library to communicate with 
-                # an addressable device (e.g., bacnet, modbus, REST, dali, dmx, etc.)
-                value = ref[0].get_point(ref[1])
-
-                # debug 
-                print("{} -> '{}'".format(key, value))
-
-                # update the value of the statemachine. Only used in the context
-                # of this example. Value takes a random walk so each value is 
-                # clearly not stale.
-                ref[0].mutate_point(ref[1]) 
-
-                return device_pb2.GetResponse(
-                    Header=header,
-                    Key=key, 
-                    Value=str(value),
-                )
-
-            else:
-                # this is an example of returning a device or situation specific 
-                # error message to the caller
-                return device_pb2.GetResponse(
-                    Header=header,
-                    Key=key,
-                    Error=device_pb2.GET_ERROR_UNSPECIFIED,
-                    ErrorMsg="internal name for key ({}) not in registry".format(key)
-                
-                )
-        else:
-            # if the key is not known to the driver the caller will want to know.
-            # this may trigger the device daemon refreshing its map of keys and drivers.
-            return device_pb2.GetResponse(
-                Header=header,
-                Key=key,
-                Error=device_pb2.GET_ERROR_KEY_DOES_NOT_EXIST
-            )
-
-    def GetMultiple(self, request:device_pb2.GetMultipleRequest, context):
-        print("received GetMultiple request: ")
-        header = device_pb2.Header(Src=request.Header.Dst, Dst=request.Header.Src)
+    def Get(self, request:comms_pb2.GetRequest, context):
+        print("received Get request: ")
+        header = comms_pb2.Header(Src=request.Header.Dst, Dst=request.Header.Src)
         
         # Get receives a bunch of point ids
-        results = []
+        pairs = []
         for key in request.Keys:
             # only populate as needed
             value:str = "" # default to empty string
             error = None
             error_msg = None
+            dtype = None
 
             if key in point_map:
                 internal_addr = point_map[key] # request.Key is the bos point (e.g., "4.2")
                 if internal_addr in registry:
                     ref = registry[internal_addr] # tuple[object, key:str]
                     value = ref[0].get_point(ref[1])
+                    dtype = sm.GetDtype(value)
 
                     print("{} -> '{}'".format(key, value))
                     ref[0].mutate_point(ref[1])
+
             else:
                 error_msg = "key {} is unknown to grpc-server".format(key)
-                error = device_pb2.GET_ERROR_KEY_DOES_NOT_EXIST
+                error = comms_pb2.GET_ERROR_KEY_DOES_NOT_EXIST
                 print("{} get error: not in registry".format(key))
-            results.append(device_pb2.GetResponse(
+            pairs.append(comms_pb2.GetPair(
                 Key=key,
                 Value=str(value),
+                Dtype=dtype,
                 Error=error,
                 ErrorMsg=error_msg
             ))
-        return device_pb2.GetMultipleResponse(
+        return comms_pb2.GetResponse(
             Header=header,
-            Responses=results
+            Pairs=pairs
         )
-
-    def Set(self, request:device_pb2.SetRequest, context):
-        print("received SetRequest: ")
-        header = device_pb2.Header(Src=request.Header.Dst, Dst=request.Header.Src)        
-
-        key = request.Key
-        value = request.Value
-
-        if key in point_map:
-            internal_addr = point_map[key]
-            if internal_addr in registry:
-                ref = registry[internal_addr] # tuple[object, key:str]
-                ok = ref[0].set_point(ref[1], value)
-                if ok:
-                    print(key, "<-", value)
-                    return device_pb2.SetResponse(Ok=True, Key=key, Value=value)
-                else:
-                    err_msg = "unable to set key '{}' to value '{}'".format(key, value)
-                    print(err_msg)
-                    return device_pb2.SetResponse(Ok=False, Key=key, Value=value, ErrorMsg=err_msg)
-            else:
-                err_msg = "key '{}' not in internal driver registry".format(key)
-                print(err_msg)
-                return device_pb2.SetResponse(Ok=False, Key=key, Value=value, ErrorMsg=err_msg)
-        else:
-            err_msg = "key '{}' not in internal driver registry".format(key)
-            print(err_msg)
-            return device_pb2.SetResponse(Ok=False, Key=key, Value=value, ErrorMsg=err_msg)
         
-    def SetMultiple(self, request:device_pb2.SetMultipleRequest, context):
-        print("received SetMultiple Request:" )
-        header = device_pb2.Header(Src=request.Header.Dst, Dst=request.Header.Src)        
+    def Set(self, request:comms_pb2.SetRequest, context):
+        print("received Set request:" )
+        header = comms_pb2.Header(Src=request.Header.Dst, Dst=request.Header.Src)        
 
-        responses:list[device_pb2.SetResponse] = []
-        reqs:list[device_pb2.SetRequest] = request.Requests
+        request_pairs:list[comms_pb2.Pair] = request.Pairs
+        response_pairs:list[comms_pb2.SetPair] = []
 
-        for r in reqs:
-            key = r.Key
-            value = r.Value
+        for p in request_pairs:
+            key = p.Key
+            value = p.Value
             if key in point_map:
                 internal_addr = point_map[key]
                 if internal_addr in registry:
                     ref = registry[internal_addr]
                     ok = ref[0].set_point(ref[1], value)
                     if ok:
-                        responses.append(device_pb2.SetResponse(
+                        response_pairs.append(comms_pb2.SetPair(
                             Ok=True,
                             Key=key,
                             Value=value,
@@ -175,26 +89,109 @@ class GetSetRunServicer(device_pb2_grpc.GetSetRunServicer):
                         print(key, "<-", value)
                     else:
                         err_msg = "unable to set key '{}' to value '{}'".format(key, value)
-                        responses.append(device_pb2.SetResponse(
+                        response_pairs.append(comms_pb2.SetPair(
                             Ok=False,
                             Key=key,
                             Value=value,
                             ErrorMsg=err_msg))
             else:
-                responses.append(device_pb2.SetResponse(
+                response_pairs.append(comms_pb2.SetPair(
                     Ok=False,
                     Key=key,
                     Value=value,
-                    Error=device_pb2.SET_ERROR_KEY_DOES_NOT_EXIST,
+                    Error=comms_pb2.SET_ERROR_KEY_DOES_NOT_EXIST,
                     ErrorMsg="key {} not known to grpc-example server".format(key)
                 )) 
-        return device_pb2.SetMultipleResponse(
+        return comms_pb2.SetResponse(
             Header=header,
-            Responses=responses
+            Pairs=response_pairs
         )  
+    # def Get(self, request:comms_pb2.GetRequest, context):
+    #     print("received Get request: key='{}'".format(request.Key))
+    #     header = comms_pb2.Header(Src=request.Header.Dst, Dst=request.Header.Src)
 
+    #     # request.Key is the bos point (e.g., "4.2")
+    #     key:str = request.Key 
+    #     value:str = None
+
+    #     if key in point_map:
+    #         internal_addr = point_map[key]
+    #         if internal_addr in registry:
+    #             ref = registry[internal_addr] # tuple[object, key:str]
+
+    #             # this is where the driver would normally perform protocol specific
+    #             # actions like calling a lower level library to communicate with 
+    #             # an addressable device (e.g., bacnet, modbus, REST, dali, dmx, etc.)
+    #             value = ref[0].get_point(ref[1])
+
+    #             # debug 
+    #             print("{} -> '{}'".format(key, value))
+
+    #             # update the value of the statemachine. Only used in the context
+    #             # of this example. Value takes a random walk so each value is 
+    #             # clearly not stale.
+    #             ref[0].mutate_point(ref[1]) 
+
+    #             return comms_pb2.GetResponse(
+    #                 Header=header,
+    #                 Key=key, 
+    #                 Value=str(value),
+    #                 Dtype=sm.GetDtype(value)
+    #             )
+
+    #         else:
+    #             # this is an example of returning a device or situation specific 
+    #             # error message to the caller
+    #             return comms_pb2.GetResponse(
+    #                 Header=header,
+    #                 Key=key,
+    #                 Error=comms_pb2.GET_ERROR_UNSPECIFIED,
+    #                 ErrorMsg="internal name for key ({}) not in registry".format(key)
+                
+    #             )
+    #     else:
+    #         # if the key is not known to the driver the caller will want to know.
+    #         # this may trigger the device daemon refreshing its map of keys and drivers.
+    #         return comms_pb2.GetResponse(
+    #             Header=header,
+    #             Key=key,
+    #             Error=comms_pb2.GET_ERROR_KEY_DOES_NOT_EXIST
+    #         )
+    # def Set(self, request:comms_pb2.SetRequest, context):
+    #     print("received SetRequest: ")
+    #     header = comms_pb2.Header(Src=request.Header.Dst, Dst=request.Header.Src)        
+
+    #     key = request.Key
+    #     value = request.Value
+
+    #     if key in point_map:
+    #         internal_addr = point_map[key]
+    #         if internal_addr in registry:
+    #             ref = registry[internal_addr] # tuple[object, key:str]
+    #             ok = ref[0].set_point(ref[1], value)
+    #             if ok:
+    #                 print(key, "<-", value)
+    #                 return comms_pb2.SetResponse(Ok=True, Key=key, Value=value)
+    #             else:
+    #                 err_msg = "unable to set key '{}' to value '{}'".format(key, value)
+    #                 print(err_msg)
+    #                 return comms_pb2.SetResponse(Ok=False, Key=key, Value=value, ErrorMsg=err_msg)
+    #         else:
+    #             err_msg = "key '{}' not in internal driver registry".format(key)
+    #             print(err_msg)
+    #             return comms_pb2.SetResponse(Ok=False, Key=key, Value=value, ErrorMsg=err_msg)
+    #     else:
+    #         err_msg = "key '{}' not in internal driver registry".format(key)
+    #         print(err_msg)
+    #         return comms_pb2.SetResponse(Ok=False, Key=key, Value=value, ErrorMsg=err_msg)
 
 if __name__ == "__main__":
+    if len(sys.argv) > 1:
+        SERVE_PORT = sys.argv[1]
+        print("using custom server port {}".format(SERVE_PORT))
+    else:
+        print("using default server port")
+
     # load the external to internal map
     LoadPointMap()
     
@@ -227,6 +224,7 @@ if __name__ == "__main__":
     d5.set_point('power', 120)
 
     # create a flat mapping between internal point ids and an access method
+    # the internal point keys are used to index internal to devices and points
     registry = {
         # device 1
         "1": (d1, 'last-modified'),
@@ -265,7 +263,7 @@ if __name__ == "__main__":
     def serve():
         port = SERVE_PORT
         server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
-        device_pb2_grpc.add_GetSetRunServicer_to_server(GetSetRunServicer(), server)
+        comms_pb2_grpc.add_GetSetRunServicer_to_server(GetSetRunServicer(), server)
         server.add_insecure_port("[::]:" + port)
         server.start()
         print("Server started, listening on " + port)
@@ -273,3 +271,17 @@ if __name__ == "__main__":
 
     logging.basicConfig()
     serve()
+
+# registry = {}
+
+# class Registry(object):
+#     """The Registry class contains a self.Device property which is a 
+    
+#     creates a service that responds to get and set RPCs
+#        for a collection of devices.
+#     """
+#     def __init__(self):
+#         self.Devices = {}
+
+#     def add_device(self, key:str, dev:sm.Device):
+#         self.Devices[key] = dev
