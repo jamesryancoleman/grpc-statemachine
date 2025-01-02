@@ -25,26 +25,3 @@ def Set(key_value_pairs:list[tuple[str,str]], addr=DEST_ADDR) -> comms_pb2.SetRe
             )
         )
     return responses
-
-# def Get(key:str, addr=DEST_ADDR) -> comms_pb2.GetResponse:
-#     response: comms_pb2.GetResponse
-#     with grpc.insecure_channel(addr) as channel:
-#         stub = comms_pb2_grpc.GetSetRunStub(channel)
-#         response = stub.Get(comms_pb2.GetRequest(
-#             Key=key
-#         ))
-#         if response.Error > 0:
-#             print("get '{}' error: {}".format(response.Response.Key,
-#                                               response.Response.Error))
-#     return response
-
-# def Set(key:str, value:str, addr=DEST_ADDR) -> comms_pb2.SetResponse:
-#     response: comms_pb2.SetResponse
-#     with grpc.insecure_channel(addr) as channel:
-#         stub = comms_pb2_grpc.GetSetRunStub(channel)
-#         response = stub.Set(comms_pb2.SetRequest(
-#             Pairs=[comms_pb2.Pair(Key=key, Value=value)]))
-#         if not response.Ok:
-#             print("set '{}' error: {}".format(response.Response.Key,
-#                                               response.Response.Error))
-#     return response

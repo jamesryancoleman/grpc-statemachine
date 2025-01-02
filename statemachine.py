@@ -72,7 +72,7 @@ class Point(object):
 
 
 class Device(object):
-    """ The Device class holds a collection of DummyPoints that can be 
+    """ The Device class holds a collection of Points that can be 
     """
     def __init__(self):
         self.name = ""
