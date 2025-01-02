@@ -1,4 +1,4 @@
-# GRPC-Example driver
+# gRPC-example driver
 
 The grpc example driver is a fully functional implmentation of an openBOS device driver. The purpose of this example is to demonstrate the concepts needed to develop drivers for OpenBOS.
 
