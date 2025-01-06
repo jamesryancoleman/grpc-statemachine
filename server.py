@@ -68,10 +68,9 @@ class GetSetRunServicer(comms_pb2_grpc.GetSetRunServicer):
         print("received Set request:" )
         header = comms_pb2.Header(Src=request.Header.Dst, Dst=request.Header.Src)        
 
-        request_pairs:list[comms_pb2.Pair] = request.Pairs
         response_pairs:list[comms_pb2.SetPair] = []
 
-        for p in request_pairs:
+        for p in request.Pairs:
             key = p.Key
             value = p.Value
             if key in point_map:
@@ -138,12 +137,30 @@ if __name__ == "__main__":
     d5.add_point('float', 'power')
     d5.add_point('time', 'start-time')
 
+    d6 = sm.Device()
+    d6.add_point('float', 'air-temp')
+    d6.add_point('float', 'air-temp-setpoint')
+    d6.add_point('int', 'humid')
+
+    d7 = sm.Device()
+    d7.add_point('float', 'air-temp')
+    d7.add_point('float', 'air-temp-setpoint')
+    d7.add_point('int', 'humid')
+
     # overwrite defaults
     d5.set_point('co2', 410)
     d5.set_point('air-temp', 18.0)
     d5.set_point('air-temp-setpoint', 21.0)
     d5.set_point('humid', 55)
-    d5.set_point('power', 120)
+    d5.set_point('power', 240)
+
+    d6.set_point('air-temp', 19.0)
+    d6.set_point('air-temp-setpoint', 21.0)
+    d6.set_point('humid', 53)
+
+    d7.set_point('air-temp', 20.0)
+    d7.set_point('air-temp-setpoint', 21.0)
+    d7.set_point('humid', 50)
 
     # create a flat mapping between internal point ids and an access method
     # the internal point keys are used to index internal to devices and points
@@ -166,7 +183,18 @@ if __name__ == "__main__":
         "9": (d5, 'humid'),
         "10": (d5, 'status'),
         "11": (d5, 'power'),
-        "12": (d5, 'start-time')
+        "12": (d5, 'start-time'),
+
+        # device 6
+        "11": (d6, 'air-temp'),
+        "12": (d6, 'air-temp-setpoint'),
+        "13": (d6, 'humid'),
+
+        # device 7
+        "14": (d7, 'air-temp'),
+        "15": (d7, 'air-temp-setpoint'),
+        "16": (d7, 'humid'),
+
     }
 
     # implement grpc server

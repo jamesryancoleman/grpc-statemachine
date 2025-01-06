@@ -21,7 +21,7 @@ def Set(key_value_pairs:list[tuple[str,str]], addr=DEST_ADDR) -> comms_pb2.SetRe
         stub = comms_pb2_grpc.GetSetRunStub(channel)
         responses = stub.Set(
             comms_pb2.SetRequest(
-                Pairs=[comms_pb2.Pair(Key=t[0], Value=t[1]) for t in key_value_pairs]
+                Pairs=[comms_pb2.SetPair(Key=t[0], Value=t[1]) for t in key_value_pairs]
             )
         )
     return responses

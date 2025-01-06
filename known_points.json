@@ -1,13 +1,21 @@
 {
     "known_points": {
-        "http://virtual-device/co2": "6",
-        "http://virtual-device/air-temp": "7",
-        "http://virtual-device/air-temp-setpoint": "8",
-        "http://virtual-device/humid": "9",
-        "http://virtual-device/status": "10",
-        "http://virtual-device/power": "11",
-        "http://virtual-device/start-time": "12",
+        "http://test-device-1/msg": "3",
+
+        "http://test-device-1/co2": "6",
+        "http://test-device-1/air-temp": "7",
+        "http://test-device-1/air-temp-setpoint": "8",
+        "http://test-device-1/humid": "9",
+        "http://test-device-1/status": "10",
+        "http://test-device-1/power": "11",
+        "http://test-device-1/start-time": "12",
         
-        "http://virtual-device/msg": "3"
+        "http://test-device-2/air-temp": "11",
+        "http://test-device-2/air-temp-setpoint": "12",
+        "http://test-device-2/humid": "13",
+
+        "http://test-device-3/air-temp": "14",
+        "http://test-device-3/air-temp-setpoint": "15",
+        "http://test-device-3/humid": "16"
     }
 }   

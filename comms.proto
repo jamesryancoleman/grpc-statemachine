@@ -1,6 +1,11 @@
 syntax = "proto3";
 package bos;
 
+// option sysmod_package = "github.com/jamesryancoleman/bos/services/sysmod";
+// option go_package = "github.com/jamesryancoleman/bos/services/device";
+
+// import "google/protobuf/empty.proto";
+
 message Empty{} 
 
 // Headers are used to track from what service or app a request is made and 
@@ -8,12 +13,8 @@ message Empty{}
 message Header {
     string Src = 1;
     string Dst = 2;
-}
 
-// Pairs are used when setting values via a serivce
-message Pair {
-    string Key = 1;
-    string Value = 2;
+    optional uint64 TxId = 3;
 }
 
 // GetPairs are returned by services when get requests are made
@@ -28,11 +29,15 @@ message GetPair {
 
 // SetPairs are returned by services when set requests are made
 message SetPair {
+    // used in requests
     string Key = 1;
     string Value = 2;
+
+    // used in responses
     optional Dtype Dtype = 3;
     
     bool Ok = 4;
+
     optional SetError Error = 5; // is this the right error type?
     optional string ErrorMsg = 6;
 }
@@ -52,7 +57,7 @@ message GetResponse {
 
 message SetRequest {
     optional Header Header = 1;
-    repeated Pair Pairs = 2;
+    repeated SetPair Pairs = 2;
 }
 
 message SetResponse {
@@ -110,13 +115,15 @@ enum SetError {
 message PointQueryRequest {
     optional Header Header = 1;
 
-    optional string Device = 2; // "5", "dev:5", "bos://localhost/bos/dev/5"
+    optional string Query = 2;
+
+    optional string Device = 3; // "5", "dev:5", "bos://localhost/bos/dev/5"
     repeated string Names = 4;
     repeated string Types = 5;
     repeated string Locations = 6;
     optional bool ConsiderDeviceLoc = 7; 
+    optional Dtype Resource = 8; // 30, 40 or 48
 
-    optional Dtype Dtype = 10;
     optional QueryError Error = 11;
     optional string ErrorMsg = 12;
 }
@@ -124,7 +131,7 @@ message PointQueryRequest {
 message QueryResponse {
     optional Header Header = 1;
     optional string Query = 2; // should this be optional?
-    repeated string Value = 3;
+    repeated string Values = 3;
     optional Dtype Dtype = 4;
     optional QueryError Error = 5;
     optional string ErrorMsg = 6;
@@ -182,13 +189,13 @@ enum Dtype {
 
 
     // sysmod response types
-    POINT_ID = 30; // e.g., "bos://localhost/bos/dev/5/pts/1"
-    POINT_ID_LIST = 31; // e.g., "bos://localhost/bos/dev/5/pts/1 bos://localhost/bos/dev/6/pts/1"
+    POINT = 30; // e.g., "bos://localhost/bos/dev/5/pts/1"
+    POINT_LIST = 31; // e.g., "bos://localhost/bos/dev/5/pts/1 bos://localhost/bos/dev/6/pts/1"
 
-    DEVICE_ID = 40;
-    DEVICE_ID_LIST = 41;
+    DEVICE = 40;
+    DEVICE_LIST = 41;
 
-    DRIVER_ID = 48;
+    DRIVER = 48;
     DRIVER_XREF = 49;
 }
 
@@ -197,3 +204,128 @@ service HealthCheck {
 }
 
           
+// message GetResponse {
+//     optional Header Header = 1;
+//     string Key = 2;
+//     string Value = 3;
+//     optional Dtype Dtype = 4;
+//     optional GetError Error = 5;
+//     optional string ErrorMsg = 6;
+// }
+
+
+// message GetMultipleRequest {
+//     Header Header = 1;
+//     repeated string Keys = 2;
+// }
+
+// message GetMultipleResponse {
+//     Header Header = 1;
+//     repeated GetResponse Responses = 2;
+// }
+
+// message SetMultipleRequest {
+//     Header Header = 1;
+//     repeated SetRequest Requests = 2;
+// }
+
+// message SetMultipleResponse {
+//     Header Header = 1;
+//     repeated SetResponse Responses = 2;
+// }
+
+
+/* 
+
+For python compiling:
+
+python -m grpc_tools.protoc  -I=. \
+--python_out=drivers/bacnet/      \
+--pyi_out=drivers/bacnet/         \
+--grpc_python_out=drivers/bacnet/ \
+device.proto
+
+python -m grpc_tools.protoc  -I=. \
+--python_out=drivers/grpc-example/      \
+--pyi_out=drivers/grpc-example/         \
+--grpc_python_out=drivers/grpc-example/ \
+device.proto 
+
+python -m grpc_tools.protoc  -I=. \
+--python_out=drivers/kasa/      \
+--pyi_out=drivers/kasa/         \
+--grpc_python_out=drivers/kasa/ \
+device.proto 
+
+For Go compiling:
+
+protoc -I=. \
+--go_out=. --go_opt=paths=source_relative \
+--go-grpc_out=. --go-grpc_opt=paths=source_relative \
+./device.proto &&
+protoc --proto_path=. \
+--go_out=. --go_opt=paths=source_relative \
+--go-grpc_out=. --go-grpc_opt=paths=source_relative \
+./device.proto
+
+// message PointId {
+    //     uint32 Device = 1;
+    //     uint32 Point = 2;
+    // }
+    
+    // message RunRequest {
+        //     Header Header = 1;
+        //     string Method = 2;
+        //     repeated string Args = 3;
+        //     uint32 Device = 4;
+        // }
+        
+        // message RunResponse {
+            //     Header Header = 1;
+            //     bool Ok = 2;
+            //     RunError Error = 3;
+            //     repeated string Values = 4;
+            // }
+            
+
+*/
+
+// message FieldMsg {
+//     string Name = 1;
+//     optional Dtype Type = 2;
+// }
+
+// message FieldList {
+//     repeated FieldMsg Fields = 1;
+// }
+
+// message MethodSignature {
+//     string Name = 1;
+//     repeated Dtype ArgTypes = 2;
+//     repeated Dtype ReturnTypes = 3;
+// }
+
+// message MethodList {
+//     repeated MethodSignature Signatures = 1;
+// }
+
+// message BosPoint {
+//     uint32 Device = 1;
+//     uint32 Point = 2;
+// }
+
+// message Socket {
+//     string Host = 1;
+//     int32 Port = 2;
+// }
+
+// // the DeviceDaemon service provides the api to userspace
+// service DeviceDaemon {
+    //     // rpc for userspace apps to request a point's current value
+    //     rpc GetPoint(PBPoint) returns (GetResponse);
+    //     // rpc for userspace apps to set a point's current value
+    //     rpc SetPoint(PBPoint) returns (SetResponse);
+    //     // rpc for userspace apps to trigger a command exposed by a device
+    //     rpc RunCmd(RunRequest) returns (RunResponse);
+    // }
+             
