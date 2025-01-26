@@ -40,15 +40,15 @@ class Point(object):
         if type(self.value) is bool:
             self.value = not self.value
         elif type(self.value) is int:
-            if random.random() > 0.5:
+            if random.random() > 0.51:
                 self.value += 1
             else:
                 self.value -= 1
         elif type(self.value) is float:
-            if random.random() > 0.5:
+            if random.random() > 0.51:
                 self.value += 0.5
             else:
-                self.value -= 0.25
+                self.value -= 0.5
         elif type(self.value) is str:
             self.value = words[self.access_counter % len(words)]
         elif type(self.value) is dt.datetime:

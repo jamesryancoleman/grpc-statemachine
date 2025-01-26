@@ -1,7 +1,7 @@
 import client as c
 
-def get_test(key:str):
-    resp = c.Get([key]) # get always takes a list of keys
+def get_test(key:str, addr=c.DEST_ADDR):
+    resp = c.Get([key], addr=addr) # get always takes a list of keys
     v = resp.Pairs[0]
     print(v.Key, "->", v.Value)
 
@@ -34,7 +34,7 @@ if __name__ == "__main__":
     c.DEST_ADDR = "nuc:50061"
     print("== Get tests ==")
     key1 = "http://test-device-1/co2"  # int
-    get_test(key1)
+    get_test(key1, addr=c.DEST_ADDR)
 
     # # get multiple test
     # key2 = "http://virtual-device/air-temp" # float
