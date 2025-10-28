@@ -45,7 +45,7 @@ class GetSetRunServicer(comms_pb2_grpc.GetSetRunServicer):
                     value = ref[0].get_point(ref[1])
                     dtype = sm.GetDtype(value)
 
-                    print("{} -> '{}'".format(key, value))
+                    logging.info("{} -> '{}'".format(key, value))
                     ref[0].mutate_point(ref[1])
 
             else:
