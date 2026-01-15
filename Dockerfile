@@ -1,4 +1,4 @@
-FROM python:3.13.1-slim-bookworm
+FROM python:slim-bookworm
 
 RUN pip install python-dateutil
 RUN python -m pip install grpcio

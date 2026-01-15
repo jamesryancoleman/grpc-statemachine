@@ -4,15 +4,19 @@ import json
 import sys
 
 import statemachine as sm
+from zoneinfo import ZoneInfo
+import datetime
 
-import comms_pb2_grpc
-import comms_pb2
+import common_pb2_grpc
+import common_pb2
 import grpc
 
 SERVE_PORT = "50061"
 
 # the point_map is a collection of URIs that map to points in the internal namespace
 point_map = {}
+
+_tz = ZoneInfo('America/New_York')
 
 def LoadPointMap(path:str='known_points.json'):
     global point_map
@@ -24,10 +28,10 @@ def LoadPointMap(path:str='known_points.json'):
     for k, v in point_map.items():
         print('\t',k, "->",v)
 
-class GetSetRunServicer(comms_pb2_grpc.GetSetRunServicer):
-    def Get(self, request:comms_pb2.GetRequest, context):
+class DeviceControlServicer(common_pb2_grpc.DeviceControlServicer):
+    def Get(self, request:common_pb2.GetRequest, context):
         print("received Get request: ")
-        header = comms_pb2.Header(Src=request.Header.Dst, Dst=request.Header.Src)
+        header = common_pb2.Header(Src=request.Header.Dst, Dst=request.Header.Src)
         
         # Get receives a bunch of point ids
         pairs = []
@@ -50,25 +54,26 @@ class GetSetRunServicer(comms_pb2_grpc.GetSetRunServicer):
 
             else:
                 error_msg = "key {} is unknown to grpc-server".format(key)
-                error = comms_pb2.GET_ERROR_KEY_DOES_NOT_EXIST
+                error = common_pb2.GET_ERROR_KEY_DOES_NOT_EXIST
                 print("{} get error: not in registry".format(key))
-            pairs.append(comms_pb2.GetPair(
+            pairs.append(common_pb2.GetPair(
                 Key=key,
                 Value=str(value),
+                time=datetime.datetime.now(_tz),
                 Dtype=dtype,
                 Error=error,
                 ErrorMsg=error_msg
             ))
-        return comms_pb2.GetResponse(
+        return common_pb2.GetResponse(
             Header=header,
             Pairs=pairs
         )
         
-    def Set(self, request:comms_pb2.SetRequest, context):
+    def Set(self, request:common_pb2.SetRequest, context):
         print("received Set request:" )
-        header = comms_pb2.Header(Src=request.Header.Dst, Dst=request.Header.Src)        
+        header = common_pb2.Header(Src=request.Header.Dst, Dst=request.Header.Src)        
 
-        response_pairs:list[comms_pb2.SetPair] = []
+        response_pairs:list[common_pb2.SetPair] = []
 
         for p in request.Pairs:
             key = p.Key
@@ -79,7 +84,7 @@ class GetSetRunServicer(comms_pb2_grpc.GetSetRunServicer):
                     ref = registry[internal_addr]
                     ok = ref[0].set_point(ref[1], value)
                     if ok:
-                        response_pairs.append(comms_pb2.SetPair(
+                        response_pairs.append(common_pb2.SetPair(
                             Ok=True,
                             Key=key,
                             Value=value,
@@ -87,20 +92,20 @@ class GetSetRunServicer(comms_pb2_grpc.GetSetRunServicer):
                         print(key, "<-", value)
                     else:
                         err_msg = "unable to set key '{}' to value '{}'".format(key, value)
-                        response_pairs.append(comms_pb2.SetPair(
+                        response_pairs.append(common_pb2.SetPair(
                             Ok=False,
                             Key=key,
                             Value=value,
                             ErrorMsg=err_msg))
             else:
-                response_pairs.append(comms_pb2.SetPair(
+                response_pairs.append(common_pb2.SetPair(
                     Ok=False,
                     Key=key,
                     Value=value,
-                    Error=comms_pb2.SET_ERROR_KEY_DOES_NOT_EXIST,
+                    Error=common_pb2.SET_ERROR_KEY_DOES_NOT_EXIST,
                     ErrorMsg="key {} not known to grpc-example server".format(key)
                 )) 
-        return comms_pb2.SetResponse(
+        return common_pb2.SetResponse(
             Header=header,
             Pairs=response_pairs
         )  
@@ -202,7 +207,7 @@ if __name__ == "__main__":
         port = SERVE_PORT
         server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
         print("Starting server on:", "0.0.0.0:" + port)
-        comms_pb2_grpc.add_GetSetRunServicer_to_server(GetSetRunServicer(), server)
+        common_pb2_grpc.add_DeviceControlServicer_to_server(DeviceControlServicer(), server)
         server.add_insecure_port("0.0.0.0:" + port)
         server.start()
         print("Server started, listening on " + port)

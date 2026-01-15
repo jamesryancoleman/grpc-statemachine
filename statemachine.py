@@ -2,7 +2,7 @@ from dateutil import parser
 import datetime as dt
 import random
 
-import comms_pb2
+import common_pb2
 
 valid_types = ['bool', 'int', 'float', 'str', 'time']
 words = ['In', 'the', 'kitchen', 'the', 'breakfast', 'stove', 'gave', 'a', 'hissing', 'sigh', 'and', 'ejected', 'from', 'its', 'warm', 'interior', 'eight', 'pieces', 'of', 'perfectly', 'browned', 'toast,', 'eight', 'eggs', 'sunny', 'side', 'up,', 'sixteen', 'slices', 'of', 'bacon,', 'two', 'coffees,', 'and', 'two', 'cool', 'glasses', 'of', 'milk.']
@@ -103,12 +103,12 @@ class Device(object):
 def GetDtype(value):
     t = type(value)
     if t == bool:
-        return comms_pb2.BOOL
+        return common_pb2.BOOL
     if t == int:
-        return comms_pb2.INT64
+        return common_pb2.INT64
     if t == float:
-        return comms_pb2.FLOAT
+        return common_pb2.FLOAT
     if t == str:
-        return comms_pb2.STRING
+        return common_pb2.STRING
     else:
-        return comms_pb2.UNSPECIFIED
+        return common_pb2.UNSPECIFIED
